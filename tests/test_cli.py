@@ -35,6 +35,7 @@ def test_run_dry_run(tmp_git_project):
         assert result.exit_code == 0
         assert "Experiment: my_exp" in result.output
         assert "Config:" in result.output
+        assert "Git SHA:" in result.output
 
 
 def test_run_dry_run_with_overrides(tmp_git_project):
@@ -87,3 +88,32 @@ def test_init_already_exists(tmp_path):
         result = runner.invoke(cli, ["init", "existing"])
         assert result.exit_code == 1
         assert "already exists" in result.output
+
+
+def test_list_with_string_annotations(tmp_path):
+    """Ensure list works when experiment uses `from __future__ import annotations`."""
+    (tmp_path / "project.yaml").write_text("name: test\n")
+    experiments_dir = tmp_path / "experiments"
+    experiments_dir.mkdir()
+    (experiments_dir / "__init__.py").write_text("")
+    (experiments_dir / "annotated.py").write_text(
+        textwrap.dedent("""\
+        from __future__ import annotations
+        from dataclasses import dataclass
+
+        @dataclass
+        class HyperParams:
+            lr: float = 1e-3
+            epochs: int = 10
+
+        def run(config, wandb_run):
+            pass
+        """)
+    )
+    runner = CliRunner()
+    with runner.isolated_filesystem(temp_dir=tmp_path.parent):
+        os.chdir(tmp_path)
+        result = runner.invoke(cli, ["list"])
+        assert result.exit_code == 0
+        assert "annotated" in result.output
+        assert "lr" in result.output

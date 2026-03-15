@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import click
 import yaml
 
 
@@ -38,6 +39,11 @@ def load_project_config(project_dir: Path) -> ProjectConfig:
         )
 
     known_fields = {f.name for f in ProjectConfig.__dataclass_fields__.values()}
+
+    unknown_keys = set(raw.keys()) - known_fields
+    if unknown_keys:
+        click.echo(f"Warning: unknown keys in project.yaml: {', '.join(sorted(unknown_keys))}", err=True)
+
     filtered = {k: v for k, v in raw.items() if k in known_fields}
 
     return ProjectConfig(**filtered)

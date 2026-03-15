@@ -1,4 +1,5 @@
 import textwrap
+from unittest.mock import patch
 
 from wm.discovery import discover_experiments
 
@@ -79,3 +80,14 @@ def test_with_container(tmp_project):
 def test_no_experiments_dir(tmp_path):
     exps = discover_experiments(tmp_path)
     assert exps == {}
+
+
+def test_syntax_error_warns(tmp_project):
+    (tmp_project / "experiments" / "bad.py").write_text("def oops(\n")
+    with patch("wm.discovery.click") as mock_click:
+        exps = discover_experiments(tmp_project)
+    assert "bad" not in exps
+    mock_click.echo.assert_called()
+    warning_msg = mock_click.echo.call_args_list[-1][0][0]
+    assert "failed to import" in warning_msg
+    assert "experiments.bad" in warning_msg

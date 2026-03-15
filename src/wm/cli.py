@@ -1,9 +1,11 @@
+import typing
 from dataclasses import fields
 from pathlib import Path
 
 import click
 
 from wm.config import load_project_config
+from wm.container import resolve_container_spec
 from wm.discovery import discover_experiments
 from wm.git_check import check_git_status
 from wm.runner import dispatch
@@ -29,19 +31,14 @@ def parse_extra_args(args: list[str]) -> dict[str, str]:
 
 
 def describe_container(project, experiment_container):
-    ec = experiment_container or {}
+    spec = resolve_container_spec(project, experiment_container)
     lines = []
-    gpu = ec.get("gpu", project.gpu)
-    timeout = ec.get("timeout", project.timeout)
-    dockerfile = ec.get("dockerfile", project.dockerfile)
-    lines.append(f"  GPU: {gpu or 'none'}")
-    lines.append(f"  Timeout: {timeout}s")
-    if dockerfile:
-        lines.append(f"  Dockerfile: {dockerfile}")
+    lines.append(f"  GPU: {spec.gpu or 'none'}")
+    lines.append(f"  Timeout: {spec.timeout}s")
+    if spec.dockerfile:
+        lines.append(f"  Dockerfile: {spec.dockerfile}")
     else:
-        deps = list(project.dependencies or [])
-        deps.extend(ec.get("extra_dependencies", []))
-        lines.append(f"  Dependencies: {deps}")
+        lines.append(f"  Dependencies: {spec.dependencies}")
     return "\n".join(lines)
 
 
@@ -65,10 +62,16 @@ def list_experiments():
     for name, info in sorted(experiments.items()):
         params = fields(info.hyper_params)
         defaults = info.hyper_params()
+        try:
+            type_hints = typing.get_type_hints(info.hyper_params)
+        except Exception:
+            type_hints = {}
         click.echo(f"  {name}")
         for p in params:
             val = getattr(defaults, p.name)
-            click.echo(f"    --{p.name} ({p.type.__name__}): {val}")
+            t = type_hints.get(p.name, p.type)
+            type_name = t.__name__ if isinstance(t, type) else str(t)
+            click.echo(f"    --{p.name} ({type_name}): {val}")
         click.echo()
 
 
@@ -93,16 +96,17 @@ def run(ctx, experiment_name, dry_run, force):
     overrides = parse_extra_args(ctx.args)
     config = resolve_config(exp.hyper_params, overrides)
 
-    check_git_status(project_dir, force)
+    commit_sha = check_git_status(project_dir, force)
 
     if dry_run:
         click.echo(f"Experiment: {experiment_name}")
         click.echo(f"Config: {config}")
+        click.echo(f"Git SHA: {commit_sha}")
         click.echo(f"Container:")
         click.echo(describe_container(project, exp.container))
         return
 
-    dispatch(project, exp, config, project_dir)
+    dispatch(project, exp, config, project_dir, commit_sha=commit_sha)
 
 
 @cli.command()

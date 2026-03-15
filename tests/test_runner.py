@@ -8,14 +8,20 @@ from wm.config import ProjectConfig
 from wm.discovery import ExperimentInfo
 
 
-def _make_project():
-    return ProjectConfig(
+def _make_project(**kwargs):
+    defaults = dict(
         name="test-project",
         gpu=None,
         timeout=3600,
         wandb_secret="wandb-secret",
         dependencies=["torch"],
+        volume=None,
+        data_mount="/data",
+        apt_packages=None,
+        dockerfile=None,
     )
+    defaults.update(kwargs)
+    return ProjectConfig(**defaults)
 
 
 def _make_experiment():
@@ -54,7 +60,8 @@ def test_dispatch_constructs_app(mock_build, mock_modal, tmp_path):
 
     from wm.runner import dispatch
 
-    dispatch(project, experiment, {"lr": 0.001}, tmp_path)
+    dispatch(project, experiment, {"lr": 0.001}, tmp_path, commit_sha="abc123")
 
     mock_modal.App.assert_called_once_with("test-project")
     mock_app.run.assert_called_once()
+    mock_modal.Secret.from_name.assert_called_once_with("wandb-secret")

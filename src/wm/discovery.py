@@ -4,6 +4,8 @@ from dataclasses import dataclass, fields
 from pathlib import Path
 from types import ModuleType
 
+import click
+
 
 @dataclass
 class ExperimentInfo:
@@ -40,7 +42,8 @@ def discover_experiments(project_dir: Path) -> dict[str, ExperimentInfo]:
 
             try:
                 mod = importlib.import_module(module_name)
-            except Exception:
+            except Exception as exc:
+                click.echo(f"Warning: failed to import {module_name}: {exc}", err=True)
                 continue
 
             hyper_params = getattr(mod, "HyperParams", None)

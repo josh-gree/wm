@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 import pytest
@@ -61,3 +63,12 @@ def test_multiple_overrides():
     assert config["lr"] == 0.01
     assert config["epochs"] == 5
     assert config["use_dropout"] is False
+
+
+def test_string_annotations():
+    """HP has string annotations due to `from __future__ import annotations`."""
+    config = resolve_config(HP, {"lr": "0.05", "epochs": "3"})
+    assert config["lr"] == 0.05
+    assert isinstance(config["lr"], float)
+    assert config["epochs"] == 3
+    assert isinstance(config["epochs"], int)

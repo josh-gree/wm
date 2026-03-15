@@ -13,6 +13,7 @@ def dispatch(
     experiment: ExperimentInfo,
     config: dict,
     project_dir: Path,
+    commit_sha: str | None = None,
 ):
     click.echo(f"Building container for {experiment.name}...")
     resolved = build_container(project, experiment.container, project_dir)
@@ -33,17 +34,22 @@ def dispatch(
         timeout=resolved.timeout,
         serialized=True,
     )
-    def execute(experiment_name: str, config: dict, project_name: str):
+    def execute(experiment_name: str, config: dict, project_name: str, commit_sha: str | None):
         import importlib
         import traceback
 
         import wandb
+
+        tags = []
+        if commit_sha and commit_sha != "unknown":
+            tags.append(f"git:{commit_sha}")
 
         run = wandb.init(
             project=project_name,
             group=experiment_name,
             config=config,
             save_code=True,
+            tags=tags or None,
         )
 
         try:
@@ -57,5 +63,5 @@ def dispatch(
 
     click.echo(f"Dispatching {experiment.name} to Modal...")
     with app.run():
-        execute.remote(experiment.name, config, project.name)
+        execute.remote(experiment.name, config, project.name, commit_sha)
     click.echo("Done.")
