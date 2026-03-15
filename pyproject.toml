@@ -1,0 +1,20 @@
+[project]
+name = "wm"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "modal>=1.3.5",
+    "wandb>=0.19.0",
+    "click>=8.0",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+wm = "wm.cli:cli"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

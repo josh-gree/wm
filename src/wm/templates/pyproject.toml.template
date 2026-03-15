@@ -1,0 +1,13 @@
+[project]
+name = "{name}"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "wm",
+    "torch>=2.10.0",
+    "torchvision>=0.25.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
