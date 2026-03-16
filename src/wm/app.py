@@ -125,13 +125,17 @@ def _register_run_subcommand(run_group, exp_name, exp_cls, project):
         project_dir = Path.cwd()
         commit_sha = check_git_status(project_dir, force)
 
+        click.echo(f"Experiment: {exp_name}")
+        click.echo(f"Config: {config.model_dump()}")
+        click.echo(f"Git SHA: {commit_sha}")
+        click.echo("Container:")
+        click.echo(describe_container(project, exp_cls))
+
         if dry_run:
-            click.echo(f"Experiment: {exp_name}")
-            click.echo(f"Config: {config.model_dump()}")
-            click.echo(f"Git SHA: {commit_sha}")
-            click.echo("Container:")
-            click.echo(describe_container(project, exp_cls))
             return
+
+        if not force:
+            click.confirm("Continue?", abort=True)
 
         dispatch(project, exp_cls, config, project_dir, commit_sha=commit_sha)
 
