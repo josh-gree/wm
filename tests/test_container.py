@@ -69,7 +69,7 @@ def test_dockerfile_build(mock_modal, tmp_path):
     mock_image.add_local_dir.return_value = mock_image
     mock_image.workdir.return_value = mock_image
 
-    result = build_container(project, None, tmp_path)
+    build_container(project, None, tmp_path)
 
     mock_modal.Image.from_dockerfile.assert_called_once_with(
         str(tmp_path / "containers" / "custom.Dockerfile")
@@ -116,7 +116,11 @@ def test_wandb_always_included(mock_modal, tmp_path):
 
     pip_args = mock_image.pip_install.call_args[0]
     # wandb already present, should not be duplicated
-    wandb_count = sum(1 for d in pip_args if d == "wandb" or d.startswith("wandb>") or d.startswith("wandb="))
+    wandb_count = sum(
+        1
+        for d in pip_args
+        if d == "wandb" or d.startswith("wandb>") or d.startswith("wandb=")
+    )
     assert wandb_count == 1
 
 
@@ -172,7 +176,9 @@ def test_gitignore_used_when_present(mock_modal, tmp_path):
 
     build_container(project, None, tmp_path)
 
-    mock_modal.FilePatternMatcher.from_file.assert_called_once_with(str(tmp_path / ".gitignore"))
+    mock_modal.FilePatternMatcher.from_file.assert_called_once_with(
+        str(tmp_path / ".gitignore")
+    )
     add_kwargs = mock_image.add_local_dir.call_args[1]
     assert add_kwargs["ignore"] == "gitignore_matcher"
 

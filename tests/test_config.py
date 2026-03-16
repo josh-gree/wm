@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from wm.config import ProjectConfig, load_project_config
+from wm.config import load_project_config
 
 
 def test_valid_config(tmp_project):

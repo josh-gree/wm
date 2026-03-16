@@ -1,11 +1,20 @@
-from dataclasses import dataclass
-from types import ModuleType
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
-import pytest
+from pydantic import BaseModel
 
+from wm import Experiment
 from wm.config import ProjectConfig
-from wm.discovery import ExperimentInfo
+
+
+class TestExp(Experiment):
+    name = "test_exp"
+
+    class Config(BaseModel):
+        lr: float = 1e-3
+
+    @staticmethod
+    def run(config, wandb_run):
+        pass
 
 
 def _make_project(**kwargs):
@@ -24,23 +33,6 @@ def _make_project(**kwargs):
     return ProjectConfig(**defaults)
 
 
-def _make_experiment():
-    @dataclass
-    class HP:
-        lr: float = 1e-3
-
-    mod = ModuleType("experiments.test_exp")
-    mod.HyperParams = HP
-    mod.run = MagicMock()
-
-    return ExperimentInfo(
-        name="test_exp",
-        module=mod,
-        hyper_params=HP,
-        container=None,
-    )
-
-
 @patch("wm.runner.modal")
 @patch("wm.runner.build_container")
 def test_dispatch_constructs_app(mock_build, mock_modal, tmp_path):
@@ -53,14 +45,14 @@ def test_dispatch_constructs_app(mock_build, mock_modal, tmp_path):
     mock_build.return_value = mock_resolved
 
     project = _make_project()
-    experiment = _make_experiment()
+    config = TestExp.Config(lr=0.001)
 
     mock_app = MagicMock()
     mock_modal.App.return_value = mock_app
 
     from wm.runner import dispatch
 
-    dispatch(project, experiment, {"lr": 0.001}, tmp_path, commit_sha="abc123")
+    dispatch(project, TestExp, config, tmp_path, commit_sha="abc123")
 
     mock_modal.App.assert_called_once_with("test-project")
     mock_app.run.assert_called_once()

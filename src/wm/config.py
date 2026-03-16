@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 import click
@@ -18,10 +18,12 @@ class ProjectConfig:
     dockerfile: str | None = None
 
 
-def load_project_config(project_dir: Path) -> ProjectConfig:
-    config_path = project_dir / "project.yaml"
+def load_project_config(
+    project_dir: Path, filename: str = "project.yaml"
+) -> ProjectConfig:
+    config_path = project_dir / filename
     if not config_path.exists():
-        raise FileNotFoundError(f"No project.yaml found in {project_dir}")
+        raise FileNotFoundError(f"No {filename} found in {project_dir}")
 
     with open(config_path) as f:
         raw = yaml.safe_load(f)
@@ -42,7 +44,10 @@ def load_project_config(project_dir: Path) -> ProjectConfig:
 
     unknown_keys = set(raw.keys()) - known_fields
     if unknown_keys:
-        click.echo(f"Warning: unknown keys in project.yaml: {', '.join(sorted(unknown_keys))}", err=True)
+        click.echo(
+            f"Warning: unknown keys in project.yaml: {', '.join(sorted(unknown_keys))}",
+            err=True,
+        )
 
     filtered = {k: v for k, v in raw.items() if k in known_fields}
 

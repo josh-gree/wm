@@ -1,12 +1,27 @@
-import os
 import textwrap
 
 import pytest
 
+from pydantic import BaseModel
+from wm import App, Experiment
+
+
+class MyExp(Experiment):
+    name = "my_exp"
+
+    class Config(BaseModel):
+        lr: float = 1e-3
+        epochs: int = 10
+        batch_size: int = 64
+
+    @staticmethod
+    def run(config, wandb_run):
+        pass
+
 
 @pytest.fixture
 def tmp_project(tmp_path):
-    """Create a minimal project directory with project.yaml and an experiment."""
+    """Create a minimal project directory with project.yaml."""
     (tmp_path / "project.yaml").write_text(
         textwrap.dedent("""\
         name: test-project
@@ -17,26 +32,19 @@ def tmp_project(tmp_path):
           - torch>=2.10.0
         """)
     )
-
-    experiments_dir = tmp_path / "experiments"
-    experiments_dir.mkdir()
-    (experiments_dir / "__init__.py").write_text("")
-    (experiments_dir / "my_exp.py").write_text(
-        textwrap.dedent("""\
-        from dataclasses import dataclass
-
-        @dataclass
-        class HyperParams:
-            lr: float = 1e-3
-            epochs: int = 10
-            batch_size: int = 64
-
-        def run(config, wandb_run):
-            pass
-        """)
-    )
-
+    (tmp_path / ".gitignore").write_text(".venv\n__pycache__\n")
     return tmp_path
+
+
+@pytest.fixture
+def tmp_app(tmp_project):
+    """Create an App with MyExp registered."""
+    from wm.config import load_project_config
+
+    config = load_project_config(tmp_project)
+    app = App(config)
+    app.register(MyExp)
+    return app
 
 
 @pytest.fixture

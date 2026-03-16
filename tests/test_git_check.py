@@ -1,5 +1,3 @@
-import subprocess
-
 import pytest
 
 from wm.git_check import check_git_status

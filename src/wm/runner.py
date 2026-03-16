@@ -5,26 +5,27 @@ import modal
 
 from wm.config import ProjectConfig
 from wm.container import build_container
-from wm.discovery import ExperimentInfo
+from wm.experiment import Experiment
 
 
 def dispatch(
     project: ProjectConfig,
-    experiment: ExperimentInfo,
-    config: dict,
+    exp_cls: type[Experiment],
+    config,
     project_dir: Path,
     commit_sha: str | None = None,
 ):
-    click.echo(f"Building container for {experiment.name}...")
-    resolved = build_container(project, experiment.container, project_dir)
+    click.echo(f"Building container for {exp_cls.name}...")
+    container_dict = exp_cls.container_dict()
+    resolved = build_container(project, container_dict, project_dir)
 
     app = modal.App(project.name)
 
     volume_mount = {}
     if resolved.volume_name:
-        volume_mount[resolved.data_mount] = modal.Volume.from_name(
-            resolved.volume_name
-        )
+        volume_mount[resolved.data_mount] = modal.Volume.from_name(resolved.volume_name)
+
+    config_dict = config.model_dump()
 
     @app.function(
         image=resolved.image,
@@ -34,8 +35,12 @@ def dispatch(
         timeout=resolved.timeout,
         serialized=True,
     )
-    def execute(experiment_name: str, config: dict, project_name: str, commit_sha: str | None):
-        import importlib
+    def execute(
+        experiment_cls: type[Experiment],
+        serialized_config: dict,
+        project_name: str,
+        commit_sha: str | None,
+    ):
         import traceback
 
         import wandb
@@ -44,24 +49,28 @@ def dispatch(
         if commit_sha and commit_sha != "unknown":
             tags.append(f"git:{commit_sha}")
 
+        config_instance = experiment_cls.Config.model_validate(serialized_config)
+
         run = wandb.init(
             project=project_name,
-            group=experiment_name,
-            config=config,
+            group=experiment_cls.name,
+            config=serialized_config,
             save_code=True,
             tags=tags or None,
         )
 
         try:
-            mod = importlib.import_module(f"experiments.{experiment_name}")
-            mod.run(config, run)
+            experiment_cls.run(config_instance, run)
             wandb.finish(exit_code=0)
         except Exception:
             wandb.log({"error": traceback.format_exc()})
             wandb.finish(exit_code=1)
             raise
 
-    click.echo(f"Dispatching {experiment.name} to Modal...")
+    # TODO: exp_cls is cloudpickled via serialized=True. The remote side needs
+    # wm + pydantic installed to unpickle it. Once wm is published to PyPI,
+    # auto-inject it as a dependency in resolve_container_spec (like wandb).
+    click.echo(f"Dispatching {exp_cls.name} to Modal...")
     with app.run():
-        execute.remote(experiment.name, config, project.name, commit_sha)
+        execute.remote(exp_cls, config_dict, project.name, commit_sha)
     click.echo("Done.")
