@@ -83,16 +83,18 @@ def test_gitignore_used_when_present(mock_modal, tmp_path):
 
 
 @patch("wm.container.modal")
-def test_auto_dockerignore_when_no_gitignore(mock_modal, tmp_path):
+@patch("wm.container.click")
+def test_no_gitignore_warns(mock_click, mock_modal, tmp_path):
     project = _make_project()
-    mock_image = MagicMock()
-    mock_modal.Image.from_dockerfile.return_value = mock_image
+    mock_modal.Image.from_dockerfile.return_value = MagicMock()
 
     build_container(project, tmp_path)
 
-    # Should use FilePatternMatcher with auto patterns, not from_file
     mock_modal.FilePatternMatcher.from_file.assert_not_called()
-    mock_modal.FilePatternMatcher.assert_called_once()
+    call_kwargs = mock_modal.Image.from_dockerfile.call_args[1]
+    assert "ignore" not in call_kwargs
+    mock_click.echo.assert_called_once()
+    assert ".gitignore" in mock_click.echo.call_args[0][0]
 
 
 @patch("wm.container.modal")

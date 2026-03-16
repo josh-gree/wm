@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+import click
 import modal
 
 from wm.config import ProjectConfig
 
 _BUNDLED_DOCKERFILE = Path(__file__).parent / "Dockerfile"
-_AUTO_DOCKERIGNORE = ["__pycache__", "*.pyc", ".venv", ".git"]
 
 
 @dataclass
@@ -31,13 +31,18 @@ def build_container(
     if gitignore.exists():
         ignore = modal.FilePatternMatcher.from_file(str(gitignore))
     else:
-        ignore = modal.FilePatternMatcher(*_AUTO_DOCKERIGNORE)
+        click.echo(
+            "Warning: no .gitignore found. "
+            "Consider adding one to avoid copying .venv/, __pycache__/, etc. into the container image.",
+            err=True,
+        )
+        ignore = None
 
-    image = modal.Image.from_dockerfile(
-        str(dockerfile_path),
-        context_dir=str(project_dir),
-        ignore=ignore,
-    )
+    kwargs = dict(context_dir=str(project_dir))
+    if ignore is not None:
+        kwargs["ignore"] = ignore
+
+    image = modal.Image.from_dockerfile(str(dockerfile_path), **kwargs)
 
     return ResolvedContainer(
         image=image,
