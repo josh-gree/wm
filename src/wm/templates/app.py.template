@@ -1,8 +1,0 @@
-from wm import App
-from experiments.example import Example
-
-app = App.from_yaml("project.yaml")
-app.register(Example)
-
-if __name__ == "__main__":
-    app.cli()

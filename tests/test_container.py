@@ -44,11 +44,15 @@ def test_default_build(mock_modal, tmp_path):
     # git should always be in apt
     apt_args = mock_image.apt_install.call_args[0]
     assert "git" in apt_args
-    # wandb and torch should be in pip
-    pip_args = mock_image.pip_install.call_args[0]
-    assert "torch>=2.10.0" in pip_args
-    assert "wandb" in pip_args
-    assert any("wm @ git+https://github.com/josh-gree/wm.git" in d for d in pip_args)
+    # wandb and torch should be in pip (first pip_install call)
+    all_pip_calls = mock_image.pip_install.call_args_list
+    deps_args = all_pip_calls[0][0]
+    assert "torch>=2.10.0" in deps_args
+    assert "wandb" in deps_args
+    assert any("wm @ git+https://github.com/josh-gree/wm.git" in d for d in deps_args)
+    # project itself should be pip-installed (second pip_install call)
+    install_args = all_pip_calls[1][0]
+    assert "-e" in install_args and "." in install_args
 
     # ignore kwarg should be passed
     add_local_dir_kwargs = mock_image.add_local_dir.call_args[1]
@@ -96,8 +100,8 @@ def test_experiment_overrides(mock_modal, tmp_path):
 
     result = build_container(project, container, tmp_path)
 
-    pip_args = mock_image.pip_install.call_args[0]
-    assert "flash-attn" in pip_args
+    deps_args = mock_image.pip_install.call_args_list[0][0]
+    assert "flash-attn" in deps_args
     assert result.gpu == "A100"
     assert result.timeout == 7200
 
@@ -115,7 +119,7 @@ def test_wandb_always_included(mock_modal, tmp_path):
 
     build_container(project, None, tmp_path)
 
-    pip_args = mock_image.pip_install.call_args[0]
+    pip_args = mock_image.pip_install.call_args_list[0][0]
     # wandb already present, should not be duplicated
     wandb_count = sum(
         1

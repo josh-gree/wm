@@ -99,8 +99,7 @@ def build_container(
     if not gitignore.exists():
         raise FileNotFoundError(
             f"No .gitignore found in {project_dir}. "
-            "A .gitignore is required to avoid copying .venv/, __pycache__/, etc. into the container image. "
-            "Run 'wm init' to scaffold one, or create it manually."
+            "A .gitignore is required to avoid copying .venv/, __pycache__/, etc. into the container image."
         )
     ignore = modal.FilePatternMatcher.from_file(str(gitignore))
 
@@ -109,7 +108,7 @@ def build_container(
         "/repo",
         copy=True,
         ignore=ignore,
-    ).workdir("/repo")
+    ).workdir("/repo").pip_install("-e", ".", extra_options="--no-deps")
 
     return ResolvedContainer(
         image=image,
