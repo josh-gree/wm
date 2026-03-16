@@ -71,9 +71,11 @@ def test_gitignore_used_when_present(mock_modal, tmp_path):
 
     build_container(project, tmp_path)
 
-    mock_modal.FilePatternMatcher.from_file.assert_called_once_with(
-        str(tmp_path / ".gitignore")
-    )
+    # Patterns from .gitignore plus .git should be passed to FilePatternMatcher
+    args = mock_modal.FilePatternMatcher.call_args[0]
+    assert ".venv" in args
+    assert "__pycache__" in args
+    assert ".git" in args
 
 
 @patch("wm.container.modal")

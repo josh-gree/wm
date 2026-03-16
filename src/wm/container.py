@@ -27,29 +27,24 @@ def build_container(
     else:
         dockerfile_path = _BUNDLED_DOCKERFILE
 
+    # Always exclude .git from the Dockerfile context so dependency layers cache.
+    # We add .git back as a separate layer below for wandb git integration.
     gitignore = project_dir / ".gitignore"
     if gitignore.exists():
-        ignore = modal.FilePatternMatcher.from_file(str(gitignore))
+        patterns = [p for p in gitignore.read_text().splitlines() if p.strip() and not p.startswith("#")]
     else:
         click.echo(
             "Warning: no .gitignore found. "
             "Consider adding one to avoid copying .venv/, __pycache__/, etc. into the container image.",
             err=True,
         )
-        ignore = None
-
-    # Always exclude .git from the Dockerfile context so dependency layers cache.
-    # We add .git back as a separate layer below for wandb git integration.
-    git_ignore = modal.FilePatternMatcher(".git")
-    if ignore is not None:
-        ignore = ignore | git_ignore
-    else:
-        ignore = git_ignore
+        patterns = []
+    patterns.append(".git")
 
     image = modal.Image.from_dockerfile(
         str(dockerfile_path),
         context_dir=str(project_dir),
-        ignore=ignore,
+        ignore=modal.FilePatternMatcher(*patterns),
     )
 
     git_dir = project_dir / ".git"
