@@ -67,9 +67,6 @@ def dispatch(
             wandb.finish(exit_code=1)
             raise
 
-    # TODO: exp_cls is cloudpickled via serialized=True. The remote side needs
-    # wm + pydantic installed to unpickle it. Once wm is published to PyPI,
-    # auto-inject it as a dependency in resolve_container_spec (like wandb).
     click.echo(f"Dispatching {exp_cls.name} to Modal...")
     with app.run():
         execute.remote(exp_cls, config_dict, project.name, commit_sha)

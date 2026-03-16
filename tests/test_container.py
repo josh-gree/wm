@@ -48,6 +48,7 @@ def test_default_build(mock_modal, tmp_path):
     pip_args = mock_image.pip_install.call_args[0]
     assert "torch>=2.10.0" in pip_args
     assert "wandb" in pip_args
+    assert any("wm @ git+https://github.com/josh-gree/wm.git" in d for d in pip_args)
 
     # ignore kwarg should be passed
     add_local_dir_kwargs = mock_image.add_local_dir.call_args[1]
@@ -141,6 +142,7 @@ def test_resolve_container_spec_defaults():
     assert spec.dockerfile is None
     assert "torch>=2.10.0" in spec.dependencies
     assert "wandb" in spec.dependencies
+    assert any("wm @ git+https://github.com/josh-gree/wm.git" in d for d in spec.dependencies)
     assert "git" in spec.apt_packages
 
 

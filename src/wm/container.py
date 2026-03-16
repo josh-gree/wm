@@ -54,6 +54,9 @@ def resolve_container_spec(
         if not any(_package_name(d) == "wandb" for d in deps):
             deps.append("wandb")
 
+        if not any(_package_name(d) == "wm" for d in deps):
+            deps.append("wm @ git+https://github.com/josh-gree/wm.git")
+
     return ContainerSpec(
         gpu=gpu,
         timeout=timeout,
