@@ -68,6 +68,7 @@ def dispatch(
             raise
 
     click.echo(f"Dispatching {exp_cls.name} to Modal...")
-    with app.run():
-        execute.remote(exp_cls, config_dict, project.name, commit_sha)
+    with modal.enable_output():
+        with app.run():
+            execute.remote(exp_cls, config_dict, project.name, commit_sha)
     click.echo("Done.")
