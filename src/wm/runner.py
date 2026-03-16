@@ -13,11 +13,12 @@ def dispatch(
     exp_cls: type[Experiment],
     config,
     project_dir: Path,
+    gpu: str | None = None,
+    timeout: int = 3600,
     commit_sha: str | None = None,
 ):
     click.echo(f"Building container for {exp_cls.name}...")
-    container_dict = exp_cls.container_dict()
-    resolved = build_container(project, container_dict, project_dir)
+    resolved = build_container(project, project_dir)
 
     app = modal.App(project.name)
 
@@ -31,8 +32,8 @@ def dispatch(
         image=resolved.image,
         volumes=volume_mount,
         secrets=[modal.Secret.from_name(project.wandb_secret)],
-        gpu=resolved.gpu,
-        timeout=resolved.timeout,
+        gpu=gpu,
+        timeout=timeout,
         serialized=True,
     )
     def execute(

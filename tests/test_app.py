@@ -106,3 +106,34 @@ def test_cli_callable_as_entry_point(tmp_app):
     result = runner.invoke(tmp_app.cli, ["list"])
     assert result.exit_code == 0
     assert "my_exp" in result.output
+
+
+def test_describe_container_default_dockerfile(tmp_project):
+    from wm.config import load_project_config
+    from wm.app import describe_container
+    from tests.conftest import MyExp
+
+    config = load_project_config(tmp_project)
+    desc = describe_container(config, MyExp)
+    assert "default (bundled)" in desc
+    assert "GPU: none" in desc
+
+
+def test_describe_container_custom_dockerfile(tmp_path):
+    import textwrap
+    from wm.config import load_project_config
+    from wm.app import describe_container
+    from tests.conftest import MyExp
+
+    (tmp_path / "pyproject.toml").write_text(
+        textwrap.dedent("""\
+        [project]
+        name = "test"
+
+        [tool.wm]
+        dockerfile = "custom.Dockerfile"
+        """)
+    )
+    config = load_project_config(tmp_path)
+    desc = describe_container(config, MyExp)
+    assert "custom.Dockerfile" in desc

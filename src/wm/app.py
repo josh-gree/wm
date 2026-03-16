@@ -7,7 +7,6 @@ from pydantic import Field
 from pydantic_settings import BaseSettings
 
 from wm.config import load_project_config
-from wm.container import resolve_container_spec
 from wm.experiment import Experiment
 from wm.git_check import check_git_status
 from wm.runner import dispatch
@@ -54,11 +53,10 @@ class App:
         self._experiments: dict[str, type[Experiment]] = {}
 
     @classmethod
-    def from_yaml(cls, path: str) -> "App":
-        yaml_path = Path(path)
-        if not yaml_path.is_absolute():
-            yaml_path = Path.cwd() / yaml_path
-        config = load_project_config(yaml_path.parent, yaml_path.name)
+    def from_pyproject(cls, project_dir: Path | None = None) -> "App":
+        if project_dir is None:
+            project_dir = Path.cwd()
+        config = load_project_config(project_dir)
         return cls(config)
 
     def register(self, experiment_cls: type[Experiment]):
@@ -75,7 +73,7 @@ class App:
 
         @click.group()
         def group():
-            """wm — Modal + W&B experiment framework."""
+            """wm -- Modal + W&B experiment framework."""
 
         @group.command("list")
         def list_experiments():
@@ -126,6 +124,9 @@ def _register_run_subcommand(run_group, exp_name, exp_cls, project):
         project_dir = Path.cwd()
         commit_sha = check_git_status(project_dir, skip_git_check)
 
+        gpu = exp_cls.gpu if exp_cls.gpu is not None else project.gpu
+        timeout = exp_cls.timeout if exp_cls.timeout is not None else project.timeout
+
         click.echo(f"Experiment: {exp_name}")
         click.echo(f"Config: {config.model_dump()}")
         click.echo(f"Git SHA: {commit_sha}")
@@ -135,18 +136,22 @@ def _register_run_subcommand(run_group, exp_name, exp_cls, project):
         if not force:
             click.confirm("Continue?", abort=True)
 
-        dispatch(project, exp_cls, config, project_dir, commit_sha=commit_sha)
+        dispatch(
+            project, exp_cls, config, project_dir,
+            gpu=gpu, timeout=timeout, commit_sha=commit_sha,
+        )
 
     run_group.add_command(cmd)
 
 
 def describe_container(project, exp_cls: type[Experiment]):
-    spec = resolve_container_spec(project, exp_cls.container_dict())
+    gpu = exp_cls.gpu if exp_cls.gpu is not None else project.gpu
+    timeout = exp_cls.timeout if exp_cls.timeout is not None else project.timeout
     lines = []
-    lines.append(f"  GPU: {spec.gpu or 'none'}")
-    lines.append(f"  Timeout: {spec.timeout}s")
-    if spec.dockerfile:
-        lines.append(f"  Dockerfile: {spec.dockerfile}")
+    lines.append(f"  GPU: {gpu or 'none'}")
+    lines.append(f"  Timeout: {timeout}s")
+    if project.dockerfile:
+        lines.append(f"  Dockerfile: {project.dockerfile}")
     else:
-        lines.append(f"  Dependencies: {spec.dependencies}")
+        lines.append("  Dockerfile: default (bundled)")
     return "\n".join(lines)

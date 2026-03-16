@@ -23,10 +23,8 @@ def _make_project(**kwargs):
         gpu=None,
         timeout=3600,
         wandb_secret="wandb-secret",
-        dependencies=["torch"],
         volume=None,
         data_mount="/data",
-        apt_packages=None,
         dockerfile=None,
     )
     defaults.update(kwargs)
@@ -40,8 +38,6 @@ def test_dispatch_constructs_app(mock_build, mock_modal, tmp_path):
     mock_resolved = MagicMock()
     mock_resolved.volume_name = None
     mock_resolved.data_mount = "/data"
-    mock_resolved.gpu = None
-    mock_resolved.timeout = 3600
     mock_build.return_value = mock_resolved
 
     project = _make_project()
@@ -52,8 +48,9 @@ def test_dispatch_constructs_app(mock_build, mock_modal, tmp_path):
 
     from wm.runner import dispatch
 
-    dispatch(project, TestExp, config, tmp_path, commit_sha="abc123")
+    dispatch(project, TestExp, config, tmp_path, gpu=None, timeout=3600, commit_sha="abc123")
 
+    mock_build.assert_called_once_with(project, tmp_path)
     mock_modal.App.assert_called_once_with("test-project")
     mock_app.run.assert_called_once()
     mock_modal.Secret.from_name.assert_called_once_with("wandb-secret")

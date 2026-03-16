@@ -11,12 +11,11 @@ def test_valid_config(tmp_project):
     assert config.name == "test-project"
     assert config.gpu is None
     assert config.timeout == 3600
-    assert config.dependencies == ["torch>=2.10.0"]
 
 
-def test_missing_name(tmp_path):
-    (tmp_path / "project.yaml").write_text("gpu: A100\n")
-    with pytest.raises(ValueError, match="must contain a 'name' field"):
+def test_missing_project_name(tmp_path):
+    (tmp_path / "pyproject.toml").write_text("[project]\n")
+    with pytest.raises(ValueError, match="must contain .* 'name' field"):
         load_project_config(tmp_path)
 
 
@@ -25,43 +24,48 @@ def test_missing_file(tmp_path):
         load_project_config(tmp_path)
 
 
-def test_dockerfile_and_deps_conflict(tmp_path):
-    (tmp_path / "project.yaml").write_text(
+def test_defaults(tmp_path):
+    (tmp_path / "pyproject.toml").write_text(
         textwrap.dedent("""\
-        name: test
-        dockerfile: containers/base.Dockerfile
-        dependencies:
-          - torch
+        [project]
+        name = "minimal"
         """)
     )
-    with pytest.raises(ValueError, match="mutually exclusive"):
-        load_project_config(tmp_path)
-
-
-def test_defaults(tmp_path):
-    (tmp_path / "project.yaml").write_text("name: minimal\n")
     config = load_project_config(tmp_path)
     assert config.name == "minimal"
     assert config.volume is None
     assert config.data_mount == "/data"
     assert config.wandb_secret == "wandb-secret"
-    assert config.dependencies is None
+    assert config.gpu is None
+    assert config.dockerfile is None
+
+
+def test_missing_wm_section_uses_defaults(tmp_path):
+    (tmp_path / "pyproject.toml").write_text(
+        textwrap.dedent("""\
+        [project]
+        name = "no-wm-section"
+        """)
+    )
+    config = load_project_config(tmp_path)
+    assert config.name == "no-wm-section"
+    assert config.timeout == 3600
+    assert config.gpu is None
 
 
 def test_all_fields(tmp_path):
-    (tmp_path / "project.yaml").write_text(
+    (tmp_path / "pyproject.toml").write_text(
         textwrap.dedent("""\
-        name: full
-        volume: my-vol
-        data_mount: /mnt/data
-        gpu: A100
-        timeout: 7200
-        wandb_secret: my-secret
-        dependencies:
-          - torch
-          - numpy
-        apt_packages:
-          - libgl1
+        [project]
+        name = "full"
+
+        [tool.wm]
+        volume = "my-vol"
+        data_mount = "/mnt/data"
+        gpu = "A100"
+        timeout = 7200
+        wandb_secret = "my-secret"
+        dockerfile = "custom.Dockerfile"
         """)
     )
     config = load_project_config(tmp_path)
@@ -70,16 +74,19 @@ def test_all_fields(tmp_path):
     assert config.data_mount == "/mnt/data"
     assert config.gpu == "A100"
     assert config.timeout == 7200
-    assert config.apt_packages == ["libgl1"]
+    assert config.wandb_secret == "my-secret"
+    assert config.dockerfile == "custom.Dockerfile"
 
 
 def test_unknown_keys_warns(tmp_path):
-    (tmp_path / "project.yaml").write_text(
+    (tmp_path / "pyproject.toml").write_text(
         textwrap.dedent("""\
-        name: test
-        bogus: 42
-        dependencis:
-          - torch
+        [project]
+        name = "test"
+
+        [tool.wm]
+        bogus = 42
+        dependencis = ["torch"]
         """)
     )
     with patch("wm.config.click") as mock_click:

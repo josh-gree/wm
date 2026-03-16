@@ -12,31 +12,69 @@ uv add wm
 
 There are no structural constraints on how you organise your code. You need three things:
 
-### 1. `project.yaml`
+### 1. `pyproject.toml` with `[tool.wm]`
 
-Defines your project's default container and runtime settings:
+Your `pyproject.toml` is the single source of truth. The project name comes from `[project].name`, and runtime settings go in `[tool.wm]`:
 
-```yaml
-name: my-project
-gpu: null
-timeout: 3600
-wandb_secret: wandb-secret
+```toml
+[project]
+name = "my-project"
+requires-python = ">=3.12"
+dependencies = [
+    "torch>=2.10.0",
+    "torchvision>=0.25.0",
+    "wandb>=0.19.0",
+    "wm",
+]
 
-dependencies:
-  - torch>=2.10.0
-  - torchvision>=0.25.0
-# apt_packages:
-#   - libgl1
-
-# Or use a custom Dockerfile instead:
-# dockerfile: containers/base.Dockerfile
-
-# Optional Modal volume for data:
-# volume: my-data-volume
-# data_mount: /data
+[tool.wm]
+gpu = "A100"
+timeout = 3600
+wandb_secret = "wandb-secret"
+volume = "my-data-volume"
+data_mount = "/data"
+# dockerfile = "custom.Dockerfile"  # optional escape hatch
 ```
 
-### 2. Experiments
+All `[tool.wm]` fields are optional with sensible defaults:
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `gpu` | `null` | Modal GPU type (e.g. `"A100"`, `"T4"`) |
+| `timeout` | `3600` | Function timeout in seconds |
+| `wandb_secret` | `"wandb-secret"` | Modal secret name for W&B API key |
+| `volume` | `null` | Modal volume name for data |
+| `data_mount` | `"/data"` | Mount path for the volume |
+| `dockerfile` | `null` | Path to a custom Dockerfile |
+
+### 2. Container build
+
+By default, wm uses a bundled Dockerfile that:
+- Starts from `debian:bookworm-slim`
+- Installs `uv` and `git`
+- Runs `uv sync` to install your project and all dependencies from `pyproject.toml`
+
+This means your `pyproject.toml` dependencies are automatically available in the container. You need a `uv.lock` file — run `uv lock` to generate one.
+
+Python version is controlled by `.python-version` or `requires-python` in your `pyproject.toml` (uv manages it).
+
+#### Custom Dockerfile
+
+Set `dockerfile` in `[tool.wm]` to use your own Dockerfile. It should follow a similar pattern:
+
+```dockerfile
+FROM debian:bookworm-slim
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+WORKDIR /repo
+COPY pyproject.toml uv.lock* .python-version* ./
+RUN uv sync --frozen --no-install-project --no-dev
+COPY . .
+RUN uv sync --frozen --no-dev
+ENV PATH="/repo/.venv/bin:$PATH"
+```
+
+### 3. Experiments
 
 Define experiments anywhere in your project. Each experiment is a class that subclasses `wm.Experiment`:
 
@@ -60,18 +98,17 @@ class MnistCnn(Experiment):
             wandb_run.log({"epoch": epoch, "loss": loss})
 ```
 
-Experiments can override container settings per-experiment via class attributes:
+Experiments can override `gpu` and `timeout` per-experiment via class attributes:
 
 ```python
 class HeavyExperiment(Experiment):
     name = "heavy"
     gpu = "A100"
     timeout = 7200
-    extra_dependencies = ["transformers"]
     # ...
 ```
 
-### 3. App entry point
+### 4. App entry point
 
 Create a module (e.g. `app.py`) that wires everything together:
 
@@ -80,7 +117,7 @@ from wm import App
 from my_experiments.cnn import MnistCnn
 from my_experiments.mlp import MnistMlp
 
-app = App.from_yaml("project.yaml")
+app = App.from_pyproject()
 app.register(MnistCnn)
 app.register(MnistMlp)
 
@@ -109,12 +146,14 @@ Organise your code however you like. Here's one example:
 
 ```
 my-project/
-  app.py
-  project.yaml
   pyproject.toml
-  my_experiments/
-    cnn.py
-    mlp.py
-  shared/
-    data.py
+  uv.lock
+  src/
+    my_project/
+      app.py
+      experiments/
+        cnn.py
+        mlp.py
+      shared/
+        data.py
 ```

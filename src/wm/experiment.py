@@ -5,32 +5,8 @@ class Experiment:
     name: str
     gpu: str | None = None
     timeout: int | None = None
-    extra_dependencies: list[str] | None = None
-    apt_packages: list[str] | None = None
-    volume: str | None = None
-    data_mount: str | None = None
-    dockerfile: str | None = None
 
     Config: type[BaseModel]
-
-    _CONTAINER_FIELDS = (
-        "gpu",
-        "timeout",
-        "extra_dependencies",
-        "apt_packages",
-        "volume",
-        "data_mount",
-        "dockerfile",
-    )
-
-    @classmethod
-    def container_dict(cls) -> dict | None:
-        d = {}
-        for field in cls._CONTAINER_FIELDS:
-            val = getattr(cls, field, None)
-            if val is not None:
-                d[field] = val
-        return d or None
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)

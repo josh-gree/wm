@@ -21,15 +21,15 @@ class MyExp(Experiment):
 
 @pytest.fixture
 def tmp_project(tmp_path):
-    """Create a minimal project directory with project.yaml."""
-    (tmp_path / "project.yaml").write_text(
+    """Create a minimal project directory with pyproject.toml."""
+    (tmp_path / "pyproject.toml").write_text(
         textwrap.dedent("""\
-        name: test-project
-        gpu: null
-        timeout: 3600
-        wandb_secret: wandb-secret
-        dependencies:
-          - torch>=2.10.0
+        [project]
+        name = "test-project"
+
+        [tool.wm]
+        timeout = 3600
+        wandb_secret = "wandb-secret"
         """)
     )
     (tmp_path / ".gitignore").write_text(".venv\n__pycache__\n")
