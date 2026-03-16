@@ -36,6 +36,7 @@ def test_default_build(mock_modal, tmp_path):
     mock_image.pip_install.return_value = mock_image
     mock_image.add_local_dir.return_value = mock_image
     mock_image.workdir.return_value = mock_image
+    mock_image.run_commands.return_value = mock_image
 
     result = build_container(project, None, tmp_path)
 
@@ -50,9 +51,8 @@ def test_default_build(mock_modal, tmp_path):
     assert "torch>=2.10.0" in deps_args
     assert "wandb" in deps_args
     assert any("wm @ git+https://github.com/josh-gree/wm.git" in d for d in deps_args)
-    # project itself should be pip-installed (second pip_install call)
-    install_args = all_pip_calls[1][0]
-    assert "-e" in install_args and "." in install_args
+    # project itself should be pip-installed via run_commands
+    mock_image.run_commands.assert_called_once_with("pip install --no-deps -e .")
 
     # ignore kwarg should be passed
     add_local_dir_kwargs = mock_image.add_local_dir.call_args[1]
@@ -73,6 +73,7 @@ def test_dockerfile_build(mock_modal, tmp_path):
     mock_modal.Image.from_dockerfile.return_value = mock_image
     mock_image.add_local_dir.return_value = mock_image
     mock_image.workdir.return_value = mock_image
+    mock_image.run_commands.return_value = mock_image
 
     build_container(project, None, tmp_path)
 
@@ -116,6 +117,7 @@ def test_wandb_always_included(mock_modal, tmp_path):
     mock_image.pip_install.return_value = mock_image
     mock_image.add_local_dir.return_value = mock_image
     mock_image.workdir.return_value = mock_image
+    mock_image.run_commands.return_value = mock_image
 
     build_container(project, None, tmp_path)
 

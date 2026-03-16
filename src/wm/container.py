@@ -108,7 +108,7 @@ def build_container(
         "/repo",
         copy=True,
         ignore=ignore,
-    ).workdir("/repo").pip_install("-e", ".", extra_options="--no-deps")
+    ).workdir("/repo").run_commands("pip install --no-deps -e .")
 
     return ResolvedContainer(
         image=image,
