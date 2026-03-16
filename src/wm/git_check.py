@@ -4,7 +4,7 @@ from pathlib import Path
 import click
 
 
-def check_git_status(project_dir: Path, force: bool) -> str:
+def check_git_status(project_dir: Path, skip: bool = False) -> str:
     try:
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -28,7 +28,7 @@ def check_git_status(project_dir: Path, force: bool) -> str:
     )
     dirty = bool(result.stdout.strip())
 
-    if dirty and not force:
+    if dirty and not skip:
         click.echo("Warning: you have uncommitted changes.")
         if not click.confirm("Continue?", default=False):
             raise SystemExit(1)

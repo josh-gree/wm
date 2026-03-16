@@ -21,10 +21,10 @@ def _parse_config(config_cls, cli_args: list[str]):
         fields_dict[name] = field.default
 
     # Add wm flags so they appear in --help alongside config options
-    annotations["dry_run"] = bool
-    fields_dict["dry_run"] = False
     annotations["force"] = bool
     fields_dict["force"] = False
+    annotations["skip_git_check"] = bool
+    fields_dict["skip_git_check"] = False
 
     settings_cls = type(
         "CliConfig",
@@ -41,10 +41,10 @@ def _parse_config(config_cls, cli_args: list[str]):
     )
     parsed = settings_cls(_cli_parse_args=cli_args)
     dump = parsed.model_dump()
-    dry_run = dump.pop("dry_run")
     force = dump.pop("force")
+    skip_git_check = dump.pop("skip_git_check")
     config = config_cls.model_validate(dump)
-    return config, dry_run, force
+    return config, force, skip_git_check
 
 
 class App:
@@ -120,19 +120,16 @@ def _register_run_subcommand(run_group, exp_name, exp_cls, project):
     )
     @click.pass_context
     def cmd(ctx):
-        config, dry_run, force = _parse_config(exp_cls.Config, ctx.args)
+        config, force, skip_git_check = _parse_config(exp_cls.Config, ctx.args)
 
         project_dir = Path.cwd()
-        commit_sha = check_git_status(project_dir, force)
+        commit_sha = check_git_status(project_dir, skip_git_check)
 
         click.echo(f"Experiment: {exp_name}")
         click.echo(f"Config: {config.model_dump()}")
         click.echo(f"Git SHA: {commit_sha}")
         click.echo("Container:")
         click.echo(describe_container(project, exp_cls))
-
-        if dry_run:
-            return
 
         if not force:
             click.confirm("Continue?", abort=True)

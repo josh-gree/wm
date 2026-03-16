@@ -1,5 +1,6 @@
 import pytest
 from click.testing import CliRunner
+from unittest.mock import patch
 
 from wm import App
 
@@ -33,27 +34,38 @@ def test_list_no_experiments(tmp_project):
     assert "No experiments registered" in result.output
 
 
-def test_run_dry_run(tmp_git_project, tmp_app, monkeypatch):
+def test_run_shows_summary_and_confirms(tmp_git_project, tmp_app, monkeypatch):
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_git_project.parent):
         monkeypatch.chdir(tmp_git_project)
-        result = runner.invoke(tmp_app.cli, ["run", "my_exp", "--dry-run", "--force"])
-        assert result.exit_code == 0
+        result = runner.invoke(tmp_app.cli, ["run", "my_exp"], input="n\n")
         assert "Experiment: my_exp" in result.output
         assert "Config:" in result.output
         assert "Git SHA:" in result.output
-        assert "Continue?" not in result.output
+        assert "Continue?" in result.output
+        assert result.exit_code != 0
 
 
-def test_run_dry_run_with_overrides(tmp_git_project, tmp_app, monkeypatch):
+def test_run_confirm_yes_dispatches(tmp_git_project, tmp_app, monkeypatch):
+    runner = CliRunner()
+    with runner.isolated_filesystem(temp_dir=tmp_git_project.parent):
+        monkeypatch.chdir(tmp_git_project)
+        with patch("wm.app.dispatch") as mock_dispatch:
+            result = runner.invoke(tmp_app.cli, ["run", "my_exp"], input="y\n")
+            assert result.exit_code == 0
+            mock_dispatch.assert_called_once()
+
+
+def test_run_with_overrides(tmp_git_project, tmp_app, monkeypatch):
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_git_project.parent):
         monkeypatch.chdir(tmp_git_project)
         result = runner.invoke(
             tmp_app.cli,
-            ["run", "my_exp", "--dry-run", "--force", "--lr", "0.01"],
+            ["run", "my_exp", "--lr", "0.01"],
+            input="n\n",
         )
-        assert result.exit_code == 0
+        assert result.exit_code != 0
         assert "0.01" in result.output
 
 
@@ -61,9 +73,7 @@ def test_run_unknown_experiment(tmp_git_project, tmp_app, monkeypatch):
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_git_project.parent):
         monkeypatch.chdir(tmp_git_project)
-        result = runner.invoke(
-            tmp_app.cli, ["run", "nonexistent", "--dry-run", "--force"]
-        )
+        result = runner.invoke(tmp_app.cli, ["run", "nonexistent"])
         assert result.exit_code != 0
         assert "No such command" in result.output
 
@@ -77,22 +87,7 @@ def test_run_help_shows_options(tmp_app):
     assert "--batch-size" in result.output
 
 
-def test_run_confirms_before_dispatch(tmp_git_project, tmp_app, monkeypatch):
-    runner = CliRunner()
-    with runner.isolated_filesystem(temp_dir=tmp_git_project.parent):
-        monkeypatch.chdir(tmp_git_project)
-        # User says no — should abort
-        result = runner.invoke(
-            tmp_app.cli, ["run", "my_exp"], input="n\n"
-        )
-        assert result.exit_code != 0
-        assert "Experiment: my_exp" in result.output
-        assert "Continue?" in result.output
-
-
 def test_run_force_skips_confirm(tmp_git_project, tmp_app, monkeypatch):
-    from unittest.mock import patch
-
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_git_project.parent):
         monkeypatch.chdir(tmp_git_project)
@@ -108,9 +103,6 @@ def test_run_force_skips_confirm(tmp_git_project, tmp_app, monkeypatch):
 def test_cli_callable_as_entry_point(tmp_app):
     """app.cli must work as a script entry point: calling app.cli directly should run the CLI."""
     runner = CliRunner()
-    # Entry points call app.cli — the result must be invocable by Click's runner
     result = runner.invoke(tmp_app.cli, ["list"])
     assert result.exit_code == 0
     assert "my_exp" in result.output
-
-
