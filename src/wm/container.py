@@ -38,11 +38,23 @@ def build_container(
         )
         ignore = None
 
-    kwargs = dict(context_dir=str(project_dir))
+    # Always exclude .git from the Dockerfile context so dependency layers cache.
+    # We add .git back as a separate layer below for wandb git integration.
+    git_ignore = modal.FilePatternMatcher(".git")
     if ignore is not None:
-        kwargs["ignore"] = ignore
+        ignore = ignore | git_ignore
+    else:
+        ignore = git_ignore
 
-    image = modal.Image.from_dockerfile(str(dockerfile_path), **kwargs)
+    image = modal.Image.from_dockerfile(
+        str(dockerfile_path),
+        context_dir=str(project_dir),
+        ignore=ignore,
+    )
+
+    git_dir = project_dir / ".git"
+    if git_dir.exists():
+        image = image.add_local_dir(str(git_dir), "/repo/.git", copy=True)
 
     return ResolvedContainer(
         image=image,
