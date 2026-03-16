@@ -3,6 +3,7 @@ from pathlib import Path
 import functools
 
 import click
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 from wm.config import load_project_config
@@ -22,9 +23,9 @@ def _parse_config(config_cls, cli_args: list[str]):
 
     # Add wm flags so they appear in --help alongside config options
     annotations["force"] = bool
-    fields_dict["force"] = False
+    fields_dict["force"] = Field(False, description="Skip confirmation prompt")
     annotations["skip_git_check"] = bool
-    fields_dict["skip_git_check"] = False
+    fields_dict["skip_git_check"] = Field(False, description="Skip dirty git tree check")
 
     settings_cls = type(
         "CliConfig",
