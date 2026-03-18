@@ -5,6 +5,7 @@ class Experiment:
     name: str
     gpu: str | None = None
     timeout: int | None = None
+    ephemeral_disk: int | None = None
 
     Config: type[BaseModel]
 

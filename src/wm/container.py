@@ -46,7 +46,11 @@ def build_container(
     # Add project code as a separate layer
     gitignore = project_dir / ".gitignore"
     if gitignore.exists():
-        patterns = [p for p in gitignore.read_text().splitlines() if p.strip() and not p.startswith("#")]
+        patterns = [
+            p
+            for p in gitignore.read_text().splitlines()
+            if p.strip() and not p.startswith("#")
+        ]
     else:
         click.echo(
             "Warning: no .gitignore found. "
@@ -58,7 +62,10 @@ def build_container(
 
     code_ignore = modal.FilePatternMatcher(*patterns)
     image = image.add_local_dir(
-        str(project_dir), "/repo", copy=True, ignore=code_ignore,
+        str(project_dir),
+        "/repo",
+        copy=True,
+        ignore=code_ignore,
     ).run_commands("uv sync --frozen --no-dev")
 
     # Add .git as final layer for wandb git integration

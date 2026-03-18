@@ -1,7 +1,5 @@
-from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
-import pytest
 
 from wm.config import ProjectConfig
 from wm.container import build_container, _BUNDLED_DOCKERFILE

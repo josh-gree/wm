@@ -38,6 +38,7 @@ def test_defaults(tmp_path):
     assert config.wandb_secret == "wandb-secret"
     assert config.gpu is None
     assert config.dockerfile is None
+    assert config.ephemeral_disk is None
 
 
 def test_missing_wm_section_uses_defaults(tmp_path):
@@ -66,6 +67,7 @@ def test_all_fields(tmp_path):
         timeout = 7200
         wandb_secret = "my-secret"
         dockerfile = "custom.Dockerfile"
+        ephemeral_disk = 524288
         """)
     )
     config = load_project_config(tmp_path)
@@ -76,6 +78,7 @@ def test_all_fields(tmp_path):
     assert config.timeout == 7200
     assert config.wandb_secret == "my-secret"
     assert config.dockerfile == "custom.Dockerfile"
+    assert config.ephemeral_disk == 524288
 
 
 def test_unknown_keys_warns(tmp_path):

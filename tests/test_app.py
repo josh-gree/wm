@@ -92,9 +92,7 @@ def test_run_force_skips_confirm(tmp_git_project, tmp_app, monkeypatch):
     with runner.isolated_filesystem(temp_dir=tmp_git_project.parent):
         monkeypatch.chdir(tmp_git_project)
         with patch("wm.app.dispatch") as mock_dispatch:
-            result = runner.invoke(
-                tmp_app.cli, ["run", "my_exp", "--force"]
-            )
+            result = runner.invoke(tmp_app.cli, ["run", "my_exp", "--force"])
             assert result.exit_code == 0
             assert "Continue?" not in result.output
             mock_dispatch.assert_called_once()
@@ -117,6 +115,27 @@ def test_describe_container_default_dockerfile(tmp_project):
     desc = describe_container(config, MyExp)
     assert "default (bundled)" in desc
     assert "GPU: none" in desc
+    assert "Ephemeral disk: none" in desc
+
+
+def test_describe_container_ephemeral_disk(tmp_path):
+    import textwrap
+    from wm.config import load_project_config
+    from wm.app import describe_container
+    from tests.conftest import MyExp
+
+    (tmp_path / "pyproject.toml").write_text(
+        textwrap.dedent("""\
+        [project]
+        name = "test"
+
+        [tool.wm]
+        ephemeral_disk = 524288
+        """)
+    )
+    config = load_project_config(tmp_path)
+    desc = describe_container(config, MyExp)
+    assert "524288 MiB" in desc
 
 
 def test_describe_container_custom_dockerfile(tmp_path):

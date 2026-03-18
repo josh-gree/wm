@@ -26,6 +26,7 @@ def _make_project(**kwargs):
         volume=None,
         data_mount="/data",
         dockerfile=None,
+        ephemeral_disk=None,
     )
     defaults.update(kwargs)
     return ProjectConfig(**defaults)
@@ -48,7 +49,16 @@ def test_dispatch_constructs_app(mock_build, mock_modal, tmp_path):
 
     from wm.runner import dispatch
 
-    dispatch(project, TestExp, config, tmp_path, gpu=None, timeout=3600, commit_sha="abc123")
+    dispatch(
+        project,
+        TestExp,
+        config,
+        tmp_path,
+        gpu=None,
+        timeout=3600,
+        ephemeral_disk=None,
+        commit_sha="abc123",
+    )
 
     mock_build.assert_called_once_with(project, tmp_path)
     mock_modal.App.assert_called_once_with("test-project")

@@ -14,6 +14,7 @@ class ProjectConfig:
     volume: str | None = None
     data_mount: str = "/data"
     dockerfile: str | None = None
+    ephemeral_disk: int | None = None
 
 
 def load_project_config(project_dir: Path) -> ProjectConfig:

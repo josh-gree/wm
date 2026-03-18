@@ -15,6 +15,7 @@ def dispatch(
     project_dir: Path,
     gpu: str | None = None,
     timeout: int = 3600,
+    ephemeral_disk: int | None = None,
     commit_sha: str | None = None,
 ):
     click.echo(f"Building container for {exp_cls.name}...")
@@ -34,6 +35,7 @@ def dispatch(
         secrets=[modal.Secret.from_name(project.wandb_secret)],
         gpu=gpu,
         timeout=timeout,
+        ephemeral_disk=ephemeral_disk,
         serialized=True,
     )
     def execute(

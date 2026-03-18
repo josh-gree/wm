@@ -24,7 +24,9 @@ def _parse_config(config_cls, cli_args: list[str]):
     annotations["force"] = bool
     fields_dict["force"] = Field(False, description="Skip confirmation prompt")
     annotations["skip_git_check"] = bool
-    fields_dict["skip_git_check"] = Field(False, description="Skip dirty git tree check")
+    fields_dict["skip_git_check"] = Field(
+        False, description="Skip dirty git tree check"
+    )
 
     settings_cls = type(
         "CliConfig",
@@ -126,6 +128,11 @@ def _register_run_subcommand(run_group, exp_name, exp_cls, project):
 
         gpu = exp_cls.gpu if exp_cls.gpu is not None else project.gpu
         timeout = exp_cls.timeout if exp_cls.timeout is not None else project.timeout
+        ephemeral_disk = (
+            exp_cls.ephemeral_disk
+            if exp_cls.ephemeral_disk is not None
+            else project.ephemeral_disk
+        )
 
         click.echo(f"Experiment: {exp_name}")
         click.echo(f"Config: {config.model_dump()}")
@@ -137,8 +144,14 @@ def _register_run_subcommand(run_group, exp_name, exp_cls, project):
             click.confirm("Continue?", abort=True)
 
         dispatch(
-            project, exp_cls, config, project_dir,
-            gpu=gpu, timeout=timeout, commit_sha=commit_sha,
+            project,
+            exp_cls,
+            config,
+            project_dir,
+            gpu=gpu,
+            timeout=timeout,
+            ephemeral_disk=ephemeral_disk,
+            commit_sha=commit_sha,
         )
 
     run_group.add_command(cmd)
@@ -147,9 +160,17 @@ def _register_run_subcommand(run_group, exp_name, exp_cls, project):
 def describe_container(project, exp_cls: type[Experiment]):
     gpu = exp_cls.gpu if exp_cls.gpu is not None else project.gpu
     timeout = exp_cls.timeout if exp_cls.timeout is not None else project.timeout
+    ephemeral_disk = (
+        exp_cls.ephemeral_disk
+        if exp_cls.ephemeral_disk is not None
+        else project.ephemeral_disk
+    )
     lines = []
     lines.append(f"  GPU: {gpu or 'none'}")
     lines.append(f"  Timeout: {timeout}s")
+    lines.append(
+        f"  Ephemeral disk: {f'{ephemeral_disk} MiB' if ephemeral_disk else 'none'}"
+    )
     if project.dockerfile:
         lines.append(f"  Dockerfile: {project.dockerfile}")
     else:
