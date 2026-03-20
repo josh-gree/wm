@@ -15,7 +15,7 @@ class MyExp(Experiment):
         batch_size: int = 64
 
     @staticmethod
-    def run(config, wandb_run):
+    def run(config, wandb_run, run_dir):
         pass
 
 
