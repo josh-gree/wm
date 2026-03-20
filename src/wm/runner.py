@@ -8,6 +8,48 @@ from wm.container import build_container
 from wm.experiment import Experiment
 
 
+def _run_experiment(
+    experiment_cls: type[Experiment],
+    serialized_config: dict,
+    project_name: str,
+    commit_sha: str | None,
+    storage_volume_name: str,
+):
+    import traceback
+
+    import wandb
+    from pathlib import Path
+    import modal
+
+    tags = []
+    if commit_sha and commit_sha != "unknown":
+        tags.append(f"git:{commit_sha}")
+
+    config_instance = experiment_cls.Config.model_validate(serialized_config)
+
+    run = wandb.init(
+        project=project_name,
+        group=experiment_cls.name,
+        config=serialized_config,
+        save_code=True,
+        tags=tags or None,
+    )
+
+    run_dir = Path("/storage") / experiment_cls.name / run.id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    storage_vol = modal.Volume.from_name(storage_volume_name)
+
+    try:
+        experiment_cls.run(config_instance, run, run_dir)
+        wandb.finish(exit_code=0)
+    except Exception:
+        wandb.log({"error": traceback.format_exc()})
+        wandb.finish(exit_code=1)
+        raise
+    finally:
+        storage_vol.commit()
+
+
 def dispatch(
     project: ProjectConfig,
     exp_cls: type[Experiment],
@@ -27,6 +69,10 @@ def dispatch(
     if resolved.volume_name:
         volume_mount[resolved.data_mount] = modal.Volume.from_name(resolved.volume_name)
 
+    storage_volume_name = f"{project.name}-storage"
+    storage_vol = modal.Volume.from_name(storage_volume_name, create_if_missing=True)
+    volume_mount["/storage"] = storage_vol
+
     config_dict = config.model_dump()
 
     @app.function(
@@ -43,35 +89,12 @@ def dispatch(
         serialized_config: dict,
         project_name: str,
         commit_sha: str | None,
+        storage_volume_name: str,
     ):
-        import traceback
-
-        import wandb
-
-        tags = []
-        if commit_sha and commit_sha != "unknown":
-            tags.append(f"git:{commit_sha}")
-
-        config_instance = experiment_cls.Config.model_validate(serialized_config)
-
-        run = wandb.init(
-            project=project_name,
-            group=experiment_cls.name,
-            config=serialized_config,
-            save_code=True,
-            tags=tags or None,
-        )
-
-        try:
-            experiment_cls.run(config_instance, run)
-            wandb.finish(exit_code=0)
-        except Exception:
-            wandb.log({"error": traceback.format_exc()})
-            wandb.finish(exit_code=1)
-            raise
+        _run_experiment(experiment_cls, serialized_config, project_name, commit_sha, storage_volume_name)
 
     click.echo(f"Dispatching {exp_cls.name} to Modal...")
     with modal.enable_output():
         with app.run():
-            execute.remote(exp_cls, config_dict, project.name, commit_sha)
+            execute.remote(exp_cls, config_dict, project.name, commit_sha, storage_volume_name)
     click.echo("Done.")
