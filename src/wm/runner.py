@@ -59,6 +59,7 @@ def dispatch(
     timeout: int = 3600,
     ephemeral_disk: int | None = None,
     commit_sha: str | None = None,
+    detach: bool = False,
 ):
     click.echo(f"Building container for {exp_cls.name}...")
     resolved = build_container(project, project_dir)
@@ -95,6 +96,11 @@ def dispatch(
 
     click.echo(f"Dispatching {exp_cls.name} to Modal...")
     with modal.enable_output():
-        with app.run():
-            execute.remote(exp_cls, config_dict, project.name, commit_sha, storage_volume_name)
-    click.echo("Done.")
+        if detach:
+            with app.run():
+                call = execute.spawn(exp_cls, config_dict, project.name, commit_sha, storage_volume_name)
+                click.echo(f"Detached. Function call ID: {call.object_id}")
+        else:
+            with app.run():
+                execute.remote(exp_cls, config_dict, project.name, commit_sha, storage_volume_name)
+            click.echo("Done.")
