@@ -97,7 +97,7 @@ def dispatch(
     click.echo(f"Dispatching {exp_cls.name} to Modal...")
     with modal.enable_output():
         if detach:
-            with app.run():
+            with app.run(detach=True):
                 call = execute.spawn(exp_cls, config_dict, project.name, commit_sha, storage_volume_name)
                 click.echo(f"Detached. Function call ID: {call.object_id}")
         else:
