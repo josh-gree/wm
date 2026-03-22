@@ -190,6 +190,7 @@ After `uv sync`, you get a CLI:
 my-project list              # list registered experiments
 my-project run mnist-cnn     # run an experiment on Modal
 my-project run mnist-cnn --lr 0.01 --epochs 20
+my-project run mnist-cnn --detach   # dispatch and exit immediately
 ```
 
 ## Project structure

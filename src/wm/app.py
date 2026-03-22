@@ -27,6 +27,10 @@ def _parse_config(config_cls, cli_args: list[str]):
     fields_dict["skip_git_check"] = Field(
         False, description="Skip dirty git tree check"
     )
+    annotations["detach"] = bool
+    fields_dict["detach"] = Field(
+        False, description="Run detached (dispatch and exit immediately)"
+    )
 
     settings_cls = type(
         "CliConfig",
@@ -45,8 +49,9 @@ def _parse_config(config_cls, cli_args: list[str]):
     dump = parsed.model_dump()
     force = dump.pop("force")
     skip_git_check = dump.pop("skip_git_check")
+    detach = dump.pop("detach")
     config = config_cls.model_validate(dump)
-    return config, force, skip_git_check
+    return config, force, skip_git_check, detach
 
 
 class App:
@@ -121,7 +126,7 @@ def _register_run_subcommand(run_group, exp_name, exp_cls, project):
     )
     @click.pass_context
     def cmd(ctx):
-        config, force, skip_git_check = _parse_config(exp_cls.Config, ctx.args)
+        config, force, skip_git_check, detach = _parse_config(exp_cls.Config, ctx.args)
 
         project_dir = Path.cwd()
         commit_sha = check_git_status(project_dir, skip_git_check)
@@ -152,6 +157,7 @@ def _register_run_subcommand(run_group, exp_name, exp_cls, project):
             timeout=timeout,
             ephemeral_disk=ephemeral_disk,
             commit_sha=commit_sha,
+            detach=detach,
         )
 
     run_group.add_command(cmd)
