@@ -23,3 +23,9 @@
 
 - `init` command removed — project setup is now just `pyproject.toml` + `uv lock`.
 - `project.yaml` support removed in favour of `pyproject.toml`.
+
+## 2026-03-22
+
+### Added
+
+- **`--detach` flag** — run experiments in detached mode. Dispatches the function to Modal and exits immediately. The experiment continues running on Modal in the background.
