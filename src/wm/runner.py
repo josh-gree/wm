@@ -66,7 +66,7 @@ def dispatch(
     detach: bool = False,
 ):
     click.echo(f"Building container for {exp_cls.name}...")
-    resolved = build_container(project, project_dir)
+    resolved = build_container(project, project_dir, snapshot_branch=snapshot_branch)
 
     app = modal.App(project.name)
 

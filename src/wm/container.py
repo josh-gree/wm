@@ -30,6 +30,7 @@ class ResolvedContainer:
 def build_container(
     project: ProjectConfig,
     project_dir: Path,
+    snapshot_branch: str | None = None,
 ) -> ResolvedContainer:
     if project.dockerfile:
         dockerfile_path = project_dir / project.dockerfile
@@ -72,6 +73,8 @@ def build_container(
     git_dir = project_dir / ".git"
     if git_dir.exists():
         image = image.add_local_dir(str(git_dir), "/repo/.git", copy=True)
+        if snapshot_branch:
+            image = image.run_commands(f"git checkout {snapshot_branch}")
 
     return ResolvedContainer(
         image=image,

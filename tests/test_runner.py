@@ -62,7 +62,7 @@ def test_dispatch_constructs_app(mock_build, mock_modal, tmp_path):
         commit_sha="abc123",
     )
 
-    mock_build.assert_called_once_with(project, tmp_path)
+    mock_build.assert_called_once_with(project, tmp_path, snapshot_branch=None)
     mock_modal.App.assert_called_once_with("test-project")
     mock_app.run.assert_called_once()
     mock_modal.Secret.from_name.assert_called_once_with("wandb-secret")
