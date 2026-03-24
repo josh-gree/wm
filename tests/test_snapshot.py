@@ -100,6 +100,18 @@ def test_not_a_git_repo(tmp_path):
         create_snapshot(tmp_path, "train")
 
 
+def test_pr_url_returned(tmp_git_project_with_remote):
+    result = create_snapshot(tmp_git_project_with_remote, "train")
+    assert result.pr_url == "https://github.com/test/repo/pull/1"
+
+
+def test_gh_failure_raises(tmp_git_project_with_remote, monkeypatch):
+    fail = subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr="gh error")
+    monkeypatch.setattr("wm.snapshot.subprocess.run", lambda *a, **kw: fail)
+    with pytest.raises(SnapshotError, match="failed to open PR"):
+        create_snapshot(tmp_git_project_with_remote, "train")
+
+
 def test_snapshot_skipped_on_snapshot_branch(tmp_git_project_with_remote):
     """create_snapshot returns None when already on a snapshot branch."""
     import subprocess

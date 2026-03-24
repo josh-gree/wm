@@ -136,6 +136,7 @@ def _register_run_subcommand(run_group, exp_name, exp_cls, project):
             commit_sha = snapshot.commit_sha
             snapshot_branch = snapshot.branch_name
             click.echo(f"Snapshot branch: {snapshot.branch_name}")
+            click.echo(f"Snapshot PR: {snapshot.pr_url}")
         else:
             commit_sha = None
             snapshot_branch = None

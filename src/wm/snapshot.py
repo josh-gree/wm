@@ -1,5 +1,6 @@
 import os
 import re
+import subprocess
 import tempfile
 from dataclasses import dataclass
 from datetime import datetime
@@ -19,6 +20,7 @@ class SnapshotResult:
     commit_sha: str
     branch_name: str
     head_sha: str
+    pr_url: str
 
 
 def create_snapshot(
@@ -72,8 +74,32 @@ def create_snapshot(
 
     repo.remotes.origin.push(f"{branch_name}:{branch_name}")
 
+    base = current_branch or "main"
+    pr_title = f"wm snapshot: {experiment_name} at {timestamp}"
+    pr_body = f"Automated snapshot branch created by wm."
+    if command:
+        pr_body += f"\n\n**Command:** `{command}`"
+
+    gh = subprocess.run(
+        [
+            "gh", "pr", "create",
+            "--head", branch_name,
+            "--base", base,
+            "--title", pr_title,
+            "--body", pr_body,
+        ],
+        capture_output=True,
+        text=True,
+        cwd=project_dir,
+    )
+    if gh.returncode != 0:
+        raise SnapshotError(f"failed to open PR: {gh.stderr.strip()}")
+
+    pr_url = gh.stdout.strip()
+
     return SnapshotResult(
         commit_sha=commit_sha,
         branch_name=branch_name,
         head_sha=head_sha,
+        pr_url=pr_url,
     )

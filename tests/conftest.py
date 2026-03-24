@@ -1,9 +1,27 @@
+import subprocess
 import textwrap
+from unittest.mock import patch
 
 import pytest
 
 from pydantic import BaseModel
 from wm import App, Experiment
+
+
+@pytest.fixture(autouse=True)
+def mock_gh_pr_create():
+    """Prevent tests from actually calling the gh CLI."""
+    real_run = subprocess.run
+
+    def fake_run(args, **kwargs):
+        if args and args[0] == "gh":
+            return subprocess.CompletedProcess(
+                args=args, returncode=0, stdout="https://github.com/test/repo/pull/1", stderr=""
+            )
+        return real_run(args, **kwargs)
+
+    with patch("wm.snapshot.subprocess.run", side_effect=fake_run):
+        yield
 
 
 class MyExp(Experiment):
