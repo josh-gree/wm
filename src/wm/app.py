@@ -10,6 +10,7 @@ from wm.config import load_project_config
 from wm.experiment import Experiment
 from wm.git_check import check_git_status
 from wm.runner import dispatch
+from wm.snapshot import create_snapshot
 
 
 def _parse_config(config_cls, cli_args: list[str]):
@@ -131,6 +132,20 @@ def _register_run_subcommand(run_group, exp_name, exp_cls, project):
         project_dir = Path.cwd()
         commit_sha = check_git_status(project_dir, skip_git_check)
 
+        snapshot_branch = None
+        if not skip_git_check and commit_sha != "unknown":
+            try:
+                import sys
+                command = " ".join(sys.argv)
+                snapshot = create_snapshot(project_dir, exp_name, command=command)
+                commit_sha = snapshot.commit_sha
+                snapshot_branch = snapshot.branch_name
+                click.echo(f"Snapshot branch: {snapshot.branch_name}")
+                if not snapshot.pushed:
+                    click.echo("Warning: snapshot branch was not pushed to remote")
+            except Exception as e:
+                click.echo(f"Warning: snapshot failed ({e}), using HEAD SHA", err=True)
+
         gpu = exp_cls.gpu if exp_cls.gpu is not None else project.gpu
         timeout = exp_cls.timeout if exp_cls.timeout is not None else project.timeout
         ephemeral_disk = (
@@ -157,6 +172,7 @@ def _register_run_subcommand(run_group, exp_name, exp_cls, project):
             timeout=timeout,
             ephemeral_disk=ephemeral_disk,
             commit_sha=commit_sha,
+            snapshot_branch=snapshot_branch,
             detach=detach,
         )
 
