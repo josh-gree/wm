@@ -16,7 +16,6 @@ class SnapshotResult:
     commit_sha: str
     branch_name: str
     head_sha: str
-    pushed: bool
 
 
 def create_snapshot(
@@ -54,17 +53,13 @@ def create_snapshot(
         if os.path.exists(tmp_index_path):
             os.unlink(tmp_index_path)
 
-    pushed = False
-    try:
-        if repo.remotes:
-            repo.remotes.origin.push(f"{branch_name}:{branch_name}")
-            pushed = True
-    except Exception:
-        pass
+    if not repo.remotes:
+        raise SnapshotError("no remote configured — wm requires a git remote")
+
+    repo.remotes.origin.push(f"{branch_name}:{branch_name}")
 
     return SnapshotResult(
         commit_sha=commit_sha,
         branch_name=branch_name,
         head_sha=head_sha,
-        pushed=pushed,
     )

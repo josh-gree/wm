@@ -1,6 +1,6 @@
-from pathlib import Path
-
 import functools
+import sys
+from pathlib import Path
 
 import click
 from pydantic import Field
@@ -125,19 +125,11 @@ def _register_run_subcommand(run_group, exp_name, exp_cls, project):
 
         project_dir = Path.cwd()
 
-        import sys
         command = " ".join(sys.argv)
-        commit_sha = "unknown"
-        snapshot_branch = None
-        try:
-            snapshot = create_snapshot(project_dir, exp_name, command=command)
-            commit_sha = snapshot.commit_sha
-            snapshot_branch = snapshot.branch_name
-            click.echo(f"Snapshot branch: {snapshot.branch_name}")
-            if not snapshot.pushed:
-                click.echo("Warning: snapshot branch was not pushed to remote")
-        except Exception as e:
-            click.echo(f"Warning: snapshot failed ({e}), continuing without snapshot", err=True)
+        snapshot = create_snapshot(project_dir, exp_name, command=command)
+        commit_sha = snapshot.commit_sha
+        snapshot_branch = snapshot.branch_name
+        click.echo(f"Snapshot branch: {snapshot.branch_name}")
 
         gpu = exp_cls.gpu if exp_cls.gpu is not None else project.gpu
         timeout = exp_cls.timeout if exp_cls.timeout is not None else project.timeout

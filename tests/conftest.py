@@ -70,3 +70,14 @@ def tmp_git_project(tmp_project):
         capture_output=True,
     )
     return tmp_project
+
+
+@pytest.fixture
+def tmp_git_project_with_remote(tmp_git_project, tmp_path_factory):
+    """A tmp_git_project with a local bare remote."""
+    import subprocess
+
+    bare = tmp_path_factory.mktemp("bare")
+    subprocess.run(["git", "clone", "--bare", str(tmp_git_project), str(bare)], capture_output=True)
+    subprocess.run(["git", "remote", "add", "origin", str(bare)], cwd=tmp_git_project, capture_output=True)
+    return tmp_git_project
