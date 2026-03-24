@@ -74,7 +74,7 @@ def build_container(
     if git_dir.exists():
         image = image.add_local_dir(str(git_dir), "/repo/.git", copy=True)
         if snapshot_branch:
-            image = image.run_commands(f"git checkout {snapshot_branch}")
+            image = image.run_commands(f"git checkout -f {snapshot_branch}")
 
     return ResolvedContainer(
         image=image,
