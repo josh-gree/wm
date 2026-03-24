@@ -29,3 +29,17 @@
 ### Added
 
 - **`--detach` flag** — run experiments in detached mode. Dispatches the function to Modal and exits immediately. The experiment continues running on Modal in the background.
+
+## 2026-03-24
+
+### Added
+
+- **Automatic git snapshots** — every experiment run creates a snapshot branch (`wm/{experiment}/{timestamp}`) capturing the full working tree, including uncommitted changes. The branch is pushed to origin before dispatch, and the branch name is tagged on the W&B run.
+
+### Changed
+
+- A git repository with a configured remote is now required. Runs abort if either is missing.
+
+### Removed
+
+- `--skip-git-check` flag removed — replaced by the snapshot mechanism.
