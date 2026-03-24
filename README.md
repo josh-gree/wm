@@ -193,6 +193,8 @@ my-project run mnist-cnn --lr 0.01 --epochs 20
 my-project run mnist-cnn --detach   # dispatch and exit immediately
 ```
 
+Before each run, wm automatically creates a snapshot branch (`wm/{experiment}/{timestamp}`) capturing your full working tree — including uncommitted changes — and pushes it to origin. The branch name is tagged on the W&B run for full reproducibility. A git repository with a remote is required.
+
 ## Project structure
 
 Organise your code however you like. Here's one example:

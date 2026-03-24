@@ -1,6 +1,6 @@
-from pathlib import Path
-
 import functools
+import sys
+from pathlib import Path
 
 import click
 from pydantic import Field
@@ -8,8 +8,8 @@ from pydantic_settings import BaseSettings
 
 from wm.config import load_project_config
 from wm.experiment import Experiment
-from wm.git_check import check_git_status
 from wm.runner import dispatch
+from wm.snapshot import create_snapshot
 
 
 def _parse_config(config_cls, cli_args: list[str]):
@@ -23,10 +23,6 @@ def _parse_config(config_cls, cli_args: list[str]):
     # Add wm flags so they appear in --help alongside config options
     annotations["force"] = bool
     fields_dict["force"] = Field(False, description="Skip confirmation prompt")
-    annotations["skip_git_check"] = bool
-    fields_dict["skip_git_check"] = Field(
-        False, description="Skip dirty git tree check"
-    )
     annotations["detach"] = bool
     fields_dict["detach"] = Field(
         False, description="Run detached (dispatch and exit immediately)"
@@ -48,10 +44,9 @@ def _parse_config(config_cls, cli_args: list[str]):
     parsed = settings_cls(_cli_parse_args=cli_args)
     dump = parsed.model_dump()
     force = dump.pop("force")
-    skip_git_check = dump.pop("skip_git_check")
     detach = dump.pop("detach")
     config = config_cls.model_validate(dump)
-    return config, force, skip_git_check, detach
+    return config, force, detach
 
 
 class App:
@@ -126,10 +121,15 @@ def _register_run_subcommand(run_group, exp_name, exp_cls, project):
     )
     @click.pass_context
     def cmd(ctx):
-        config, force, skip_git_check, detach = _parse_config(exp_cls.Config, ctx.args)
+        config, force, detach = _parse_config(exp_cls.Config, ctx.args)
 
         project_dir = Path.cwd()
-        commit_sha = check_git_status(project_dir, skip_git_check)
+
+        command = " ".join(sys.argv)
+        snapshot = create_snapshot(project_dir, exp_name, command=command)
+        commit_sha = snapshot.commit_sha
+        snapshot_branch = snapshot.branch_name
+        click.echo(f"Snapshot branch: {snapshot.branch_name}")
 
         gpu = exp_cls.gpu if exp_cls.gpu is not None else project.gpu
         timeout = exp_cls.timeout if exp_cls.timeout is not None else project.timeout
@@ -157,6 +157,7 @@ def _register_run_subcommand(run_group, exp_name, exp_cls, project):
             timeout=timeout,
             ephemeral_disk=ephemeral_disk,
             commit_sha=commit_sha,
+            snapshot_branch=snapshot_branch,
             detach=detach,
         )
 

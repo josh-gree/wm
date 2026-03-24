@@ -14,6 +14,7 @@ def _run_experiment(
     project_name: str,
     commit_sha: str | None,
     storage_volume_name: str,
+    snapshot_branch: str | None = None,
 ):
     import traceback
 
@@ -24,6 +25,8 @@ def _run_experiment(
     tags = []
     if commit_sha and commit_sha != "unknown":
         tags.append(f"git:{commit_sha}")
+    if snapshot_branch:
+        tags.append(f"branch:{snapshot_branch}")
 
     config_instance = experiment_cls.Config.model_validate(serialized_config)
 
@@ -59,10 +62,11 @@ def dispatch(
     timeout: int = 3600,
     ephemeral_disk: int | None = None,
     commit_sha: str | None = None,
+    snapshot_branch: str | None = None,
     detach: bool = False,
 ):
     click.echo(f"Building container for {exp_cls.name}...")
-    resolved = build_container(project, project_dir)
+    resolved = build_container(project, project_dir, snapshot_branch=snapshot_branch)
 
     app = modal.App(project.name)
 
@@ -91,16 +95,17 @@ def dispatch(
         project_name: str,
         commit_sha: str | None,
         storage_volume_name: str,
+        snapshot_branch: str | None,
     ):
-        _run_experiment(experiment_cls, serialized_config, project_name, commit_sha, storage_volume_name)
+        _run_experiment(experiment_cls, serialized_config, project_name, commit_sha, storage_volume_name, snapshot_branch)
 
     click.echo(f"Dispatching {exp_cls.name} to Modal...")
     with modal.enable_output():
         if detach:
             with app.run(detach=True):
-                call = execute.spawn(exp_cls, config_dict, project.name, commit_sha, storage_volume_name)
+                call = execute.spawn(exp_cls, config_dict, project.name, commit_sha, storage_volume_name, snapshot_branch)
                 click.echo(f"Detached. Function call ID: {call.object_id}")
         else:
             with app.run():
-                execute.remote(exp_cls, config_dict, project.name, commit_sha, storage_volume_name)
+                execute.remote(exp_cls, config_dict, project.name, commit_sha, storage_volume_name, snapshot_branch)
             click.echo("Done.")
