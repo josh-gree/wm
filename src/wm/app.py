@@ -27,6 +27,10 @@ def _parse_config(config_cls, cli_args: list[str]):
     fields_dict["detach"] = Field(
         False, description="Run detached (dispatch and exit immediately)"
     )
+    annotations["force_snapshot"] = bool
+    fields_dict["force_snapshot"] = Field(
+        False, description="Snapshot even if current branch is a snapshot branch"
+    )
 
     settings_cls = type(
         "CliConfig",
@@ -45,8 +49,9 @@ def _parse_config(config_cls, cli_args: list[str]):
     dump = parsed.model_dump()
     force = dump.pop("force")
     detach = dump.pop("detach")
+    force_snapshot = dump.pop("force_snapshot")
     config = config_cls.model_validate(dump)
-    return config, force, detach
+    return config, force, detach, force_snapshot
 
 
 class App:
@@ -121,15 +126,20 @@ def _register_run_subcommand(run_group, exp_name, exp_cls, project):
     )
     @click.pass_context
     def cmd(ctx):
-        config, force, detach = _parse_config(exp_cls.Config, ctx.args)
+        config, force, detach, force_snapshot = _parse_config(exp_cls.Config, ctx.args)
 
         project_dir = Path.cwd()
 
         command = " ".join(sys.argv)
-        snapshot = create_snapshot(project_dir, exp_name, command=command)
-        commit_sha = snapshot.commit_sha
-        snapshot_branch = snapshot.branch_name
-        click.echo(f"Snapshot branch: {snapshot.branch_name}")
+        snapshot = create_snapshot(project_dir, exp_name, command=command, force=force_snapshot)
+        if snapshot is not None:
+            commit_sha = snapshot.commit_sha
+            snapshot_branch = snapshot.branch_name
+            click.echo(f"Snapshot branch: {snapshot.branch_name}")
+        else:
+            commit_sha = None
+            snapshot_branch = None
+            click.echo("Skipping snapshot: already on a snapshot branch")
 
         gpu = exp_cls.gpu if exp_cls.gpu is not None else project.gpu
         timeout = exp_cls.timeout if exp_cls.timeout is not None else project.timeout

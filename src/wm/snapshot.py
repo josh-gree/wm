@@ -1,10 +1,13 @@
 import os
+import re
 import tempfile
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
 import git
+
+SNAPSHOT_BRANCH_RE = re.compile(r"^wm/.+/\d{8}-\d{6}$")
 
 
 class SnapshotError(Exception):
@@ -19,12 +22,23 @@ class SnapshotResult:
 
 
 def create_snapshot(
-    project_dir: Path, experiment_name: str, command: str | None = None
-) -> SnapshotResult:
+    project_dir: Path,
+    experiment_name: str,
+    command: str | None = None,
+    force: bool = False,
+) -> SnapshotResult | None:
     try:
         repo = git.Repo(project_dir)
     except git.InvalidGitRepositoryError:
         raise SnapshotError(f"{project_dir} is not a git repository")
+
+    try:
+        current_branch = repo.active_branch.name
+    except TypeError:
+        current_branch = None
+
+    if current_branch and SNAPSHOT_BRANCH_RE.match(current_branch) and not force:
+        return None
 
     head_sha = repo.head.commit.hexsha
 

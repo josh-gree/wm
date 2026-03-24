@@ -100,6 +100,34 @@ def test_not_a_git_repo(tmp_path):
         create_snapshot(tmp_path, "train")
 
 
+def test_snapshot_skipped_on_snapshot_branch(tmp_git_project_with_remote):
+    """create_snapshot returns None when already on a snapshot branch."""
+    import subprocess
+
+    subprocess.run(
+        ["git", "checkout", "-b", "wm/train/20260324-120000"],
+        cwd=tmp_git_project_with_remote,
+        capture_output=True,
+    )
+
+    result = create_snapshot(tmp_git_project_with_remote, "train")
+    assert result is None
+
+
+def test_snapshot_force_on_snapshot_branch(tmp_git_project_with_remote):
+    """force=True allows snapshotting even when already on a snapshot branch."""
+    import subprocess
+
+    subprocess.run(
+        ["git", "checkout", "-b", "wm/train/20260324-120000"],
+        cwd=tmp_git_project_with_remote,
+        capture_output=True,
+    )
+
+    result = create_snapshot(tmp_git_project_with_remote, "train", force=True)
+    assert result.branch_name.startswith("wm/train/")
+
+
 def test_working_tree_fully_preserved(tmp_git_project_with_remote):
     (tmp_git_project_with_remote / "pyproject.toml").write_text("[project]\nname='modified'\n")
     (tmp_git_project_with_remote / "staged.txt").write_text("staged")
